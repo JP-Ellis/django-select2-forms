@@ -1,7 +1,7 @@
 import re
 
 
-re_spaces = re.compile(ur"\s+")
+re_spaces = re.compile("\s+")
 
 
 class cached_property(object):
@@ -20,7 +20,7 @@ class cached_property(object):
 
 def combine_css_classes(classes, new_classes):
     if not classes:
-        if isinstance(new_classes, basestring):
+        if isinstance(new_classes, str):
             return new_classes
         else:
             try:
@@ -28,7 +28,7 @@ def combine_css_classes(classes, new_classes):
             except TypeError:
                 return new_classes
 
-    if isinstance(classes, basestring):
+    if isinstance(classes, str):
         classes = set(re_spaces.split(classes))
     else:
         try:
@@ -36,7 +36,7 @@ def combine_css_classes(classes, new_classes):
         except TypeError:
             return classes
 
-    if isinstance(new_classes, basestring):
+    if isinstance(new_classes, str):
         new_classes = set(re_spaces.split(new_classes))
     else:
         try:
