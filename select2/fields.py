@@ -36,9 +36,6 @@ class Select2FieldMixin(object):
         else:
             kwargs['widget'] = widget
         super(Select2FieldMixin, self).__init__(*args, **kwargs)
-        # Django 1.2 backwards-compatibility
-        if not hasattr(self.widget, 'is_required'):
-            self.widget.is_required = self.required
 
 
 class ChoiceField(Select2FieldMixin, forms.ChoiceField):
@@ -322,19 +319,3 @@ class ManyToManyField(RelatedFieldMixin, models.ManyToManyField):
         super(ManyToManyField, self).contribute_to_class(cls, name)
         if self.sort_field_name is not None:
             setattr(cls, self.name, SortableReverseManyRelatedObjectsDescriptor(self))
-
-
-try:
-    from south.modelsinspector import add_introspection_rules
-except ImportError:
-    pass
-else:
-    add_introspection_rules(rules=[
-        ((ManyToManyField,), [], {"search_field": ["search_field", {}]}),
-    ], patterns=["^select2\.fields\.ManyToManyField"])
-    add_introspection_rules(rules=[
-        ((ForeignKey,), [], {"search_field": ["search_field", {}]}),
-    ], patterns=["^select2\.fields\.ForeignKey"])
-    add_introspection_rules(rules=[
-        ((OneToOneField,), [], {"search_field": ["search_field", {}]}),
-    ], patterns=["^select2\.fields\.OneToOneField"])

@@ -1,18 +1,11 @@
 import copy
 import json
 
+from django.apps import apps
 from django.db import models
 from django.forms.models import ModelChoiceIterator
 from django.http import HttpResponse
 from django.utils.encoding import force_text
-try:
-    from django.apps import apps
-except ImportError:
-    from django.db.models.loading import get_model
-else:
-    get_model = apps.get_model
-
-from .fields import ManyToManyField
 
 
 class ViewException(Exception):
@@ -24,7 +17,6 @@ class InvalidParameter(ViewException):
 
 
 class JsonResponse(HttpResponse):
-
     callback = None
 
     def __init__(self, content='', callback=None, content_type="application/json", *args, **kwargs):
@@ -44,8 +36,7 @@ class JsonResponse(HttpResponse):
 
 class Select2View(object):
 
-    def __init__(self, request, app_label, model_name, field_name):
-        self.request = request
+    def __init__(self, app_label, model_name, field_name):
         self.app_label = app_label
         self.model_name = model_name
         self.field_name = field_name
@@ -53,15 +44,15 @@ class Select2View(object):
     _field = None
 
     def get_field_and_model(self):
-        model_cls = get_model(self.app_label, self.model_name)
+        model_cls = apps.get_model(self.app_label, self.model_name)
         if model_cls is None:
             raise ViewException('Model %s.%s does not exist' % (self.app_label, self.model_name))
         if self._field is None:
             self._field = model_cls._meta.get_field(self.field_name)
         return self._field, model_cls
 
-    def get_response(self, data, **kwargs):
-        callback = self.request.GET.get('callback', None)
+    def get_response(self, data, request, **kwargs):
+        callback = request.GET.get('callback', None)
         if callback is None:
             response_cls = JsonResponse
         else:
@@ -116,27 +107,13 @@ class Select2View(object):
             })
         return data
 
-    def init_selection(self):
-        try:
-            field, model_cls = self.get_field_and_model()
-        except ViewException as e:
-            return self.get_response({'error': str(e)}, status=500)
+    def init_selection(self, pks, is_multiple=False):
+        field, model_cls = self.get_field_and_model()
 
-        q = self.request.GET.get('q', None)
-        try:
-            if q is None:
-                raise InvalidParameter("q parameter required")
-            pks = q.split(u',')
-            try:
-                pks = [int(pk) for pk in pks]
-            except TypeError:
-                raise InvalidParameter("q parameter must be comma separated "
-                                       "list of integers")
-        except InvalidParameter as e:
-            return self.get_response({'error': str(e)}, status=500)
+        pks = [int(pk) for pk in pks]
 
         queryset = field.queryset.filter(**{
-            (u'%s__in' % field.rel.get_related_field().name): pks,
+            ('{}__in'.format(field.rel.get_related_field().name)): pks,
         }).distinct()
         pk_ordering = dict([(force_text(pk), i) for i, pk in enumerate(pks)])
 
@@ -148,34 +125,36 @@ class Select2View(object):
             return pk_ordering[pk]
         data['results'] = sorted(data['results'], key=results_sort_callback)
 
-        if len(data['results']) == 1:
-            is_multiple = isinstance(field, ManyToManyField)
-            try:
-                multiple_param = int(self.request.GET.get('multiple'))
-            except (TypeError, ValueError):
-                pass
-            else:
-                is_multiple = (multiple_param == 1)
-            if not is_multiple:
-                data['results'] = data['results'][0]
+        # if len(data['results']) == 1:
+        #     # from .fields import ManyToManyField
+        #     # is_multiple = isinstance(field, ManyToManyField)
+        #     # try:
+        #     #     multiple_param = int(self.request.GET.get('multiple'))
+        #     # except (TypeError, ValueError):
+        #     #     pass
+        #     # else:
+        #     #     is_multiple = (multiple_param == 1)
+        #     if not is_multiple:
+        #         data['results'] = data['results'][0]
 
-        return self.get_response(data)
+        return data['results']
+        # return self.get_response(data)
 
-    def fetch_items(self):
+    def fetch_items(self, request):
         try:
             field, model_cls = self.get_field_and_model()
         except ViewException as e:
-            return self.get_response({'error': str(e)}, status=500)
+            return self.get_response({'error': str(e)}, request, status=500)
 
         queryset = copy.deepcopy(field.queryset)
 
-        q = self.request.GET.get('q', None)
-        page_limit = self.request.GET.get('page_limit', 10)
-        page = self.request.GET.get('page', 1)
+        q = request.GET.get('q', None)
+        page_limit = request.GET.get('page_limit', 10)
+        page = request.GET.get('page', 1)
 
         try:
             if q is None:
-                raise InvalidParameter("q parameter required")
+                return self.get_response({"results": [], "total": 0, "more": False}, request)
             try:
                 page_limit = int(page_limit)
             except TypeError:
@@ -192,7 +171,7 @@ class Select2View(object):
                 if page < 1:
                     raise InvalidParameter("Invalid page '%s' passed")
         except InvalidParameter as e:
-            return self.get_response({'error': str(e)}, status=500)
+            return self.get_response({'error': str(e)}, request, status=500)
 
         search_field = field.search_field
         if callable(search_field):
@@ -209,14 +188,9 @@ class Select2View(object):
         queryset = queryset.filter(q_obj)
 
         data = self.get_data(queryset, page, page_limit)
-        return self.get_response(data)
-
-
-def init_selection(request, app_label, model_name, field_name):
-    view_cls = Select2View(request, app_label, model_name, field_name)
-    return view_cls.init_selection()
+        return self.get_response(data, request)
 
 
 def fetch_items(request, app_label, model_name, field_name):
-    view_cls = Select2View(request, app_label, model_name, field_name)
-    return view_cls.fetch_items()
+    view_cls = Select2View(app_label, model_name, field_name)
+    return view_cls.fetch_items(request)
