@@ -58,12 +58,28 @@ class Select(widgets.Select):
 
 
     def render(self, name, value, attrs={}, choices=()):
-        # if value is None:
-        #     value = ''
+        if 'readonly' in attrs:
+            if value:
+                value_text = self.get_labels([value])[0]['text']
+                final_attrs = self.build_attrs(attrs, name=name, value=value, type="hidden")
+                output = [format_html('<input{}>', flatatt(final_attrs))]
+                value = self.get_labels([value])[0]['text']
+                del final_attrs['id']
+                del final_attrs['type']
+                final_attrs['value'] = value_text
+                final_attrs['disabled'] = 'disabled'
+                output.append(format_html('<input{}>', flatatt(final_attrs)))
+                return mark_safe('\n'.join(output))
+            else:
+                final_attrs = self.build_attrs(attrs, name=name)
+                output = [format_html('<input{}>', flatatt(final_attrs))]
+                return mark_safe('\n'.join(output))
+
         if self.ajax:
             attrs.update({
                 'data-ajax--url': attrs.get('data-ajax--url', self.reverse())
                 })
+
         final_attrs = self.build_attrs(attrs, name=name)
         output = [format_html('<select{}>', flatatt(final_attrs))]
         if not self.ajax or value is not None:
