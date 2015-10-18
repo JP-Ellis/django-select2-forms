@@ -56,9 +56,8 @@ class Select(widgets.Select):
         view_cls = Select2View(opts.app_label, opts.object_name.lower(), self.field.name)
         return view_cls.init_selection(pks, 'multiple' in self.attrs)
 
-
     def render(self, name, value, attrs={}, choices=()):
-        if 'readonly' in attrs:
+        if 'readonly' in attrs and attrs['readonly'] != False:
             if value:
                 value_text = self.get_labels([value])[0]['text']
                 final_attrs = self.build_attrs(attrs, name=name, value=value, type="hidden")
@@ -83,7 +82,7 @@ class Select(widgets.Select):
         final_attrs = self.build_attrs(attrs, name=name)
         output = [format_html('<select{}>', flatatt(final_attrs))]
         if not self.ajax or value is not None:
-            options = self.render_options(choices, [value])
+            options = self.render_options(choices, value if isinstance(value, list) else [value])
             if options:
                 output.append(options)
         output.append('</select>')
@@ -120,6 +119,6 @@ class SelectMultiple(Select):
 
     def value_from_datadict(self, data, files, name):
         # Since ajax widgets use hidden or text input fields, when using ajax the value needs to be a string.
-        if not self.ajax and isinstance(data, (MultiValueDict, MergeDict)):
+        if isinstance(data, (MultiValueDict, MergeDict)):
             return data.getlist(name)
         return data.get(name, None)
