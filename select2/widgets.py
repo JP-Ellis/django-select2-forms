@@ -1,12 +1,10 @@
-from itertools import chain, islice
-import json
+from itertools import chain
 
-from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.forms import widgets
 from django.utils.datastructures import MultiValueDict, MergeDict
 from django.utils.encoding import force_text
-from django.utils.html import escape, conditional_escape, format_html
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.forms.utils import flatatt
 
@@ -14,6 +12,8 @@ from .utils import combine_css_classes
 from .select2 import jquery_url, select2_js_url, select2_css_url
 from .views import Select2View
 
+import logging
+logger = logging.getLogger(__name__)
 
 __all__ = ('Select', 'SelectMultiple',)
 
@@ -78,7 +78,7 @@ class Select(widgets.Select):
         if self.ajax:
             attrs.update({
                 'data-ajax--url': attrs.get('data-ajax--url', self.reverse())
-                })
+            })
 
         final_attrs = self.build_attrs(attrs, name=name)
         output = [format_html('<select{}>', flatatt(final_attrs))]

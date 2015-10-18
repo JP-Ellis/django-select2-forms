@@ -10,6 +10,9 @@ from django.utils.encoding import force_text
 from .models.descriptors import SortableReverseManyRelatedObjectsDescriptor
 from .widgets import Select, SelectMultiple
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 __all__ = (
     'Select2FieldMixin', 'Select2ModelFieldMixin', 'ChoiceField',
@@ -52,13 +55,7 @@ class MultipleChoiceField(Select2FieldMixin, forms.MultipleChoiceField):
         if not isinstance(widget, SelectMultiple) and hasattr(widget, 'widget'):
             widget = widget.widget
         initial = widget._format_value(initial)
-        if django.VERSION < (1, 8):
-            return super(MultipleChoiceField, self)._has_changed(initial, data)
-        else:
-            return super(MultipleChoiceField, self).has_changed(initial, data)
-
-    if django.VERSION < (1, 8):
-        _has_changed = has_changed
+        return super(MultipleChoiceField, self).has_changed(initial, data)
 
 
 class Select2ModelFieldMixin(Select2FieldMixin):

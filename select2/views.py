@@ -7,6 +7,9 @@ from django.forms.models import ModelChoiceIterator
 from django.http import HttpResponse
 from django.utils.encoding import force_text
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class ViewException(Exception):
     pass
@@ -125,20 +128,7 @@ class Select2View(object):
             return pk_ordering[pk]
         data['results'] = sorted(data['results'], key=results_sort_callback)
 
-        # if len(data['results']) == 1:
-        #     # from .fields import ManyToManyField
-        #     # is_multiple = isinstance(field, ManyToManyField)
-        #     # try:
-        #     #     multiple_param = int(self.request.GET.get('multiple'))
-        #     # except (TypeError, ValueError):
-        #     #     pass
-        #     # else:
-        #     #     is_multiple = (multiple_param == 1)
-        #     if not is_multiple:
-        #         data['results'] = data['results'][0]
-
         return data['results']
-        # return self.get_response(data)
 
     def fetch_items(self, request):
         try:
